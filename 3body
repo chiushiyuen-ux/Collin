@@ -1,0 +1,99 @@
+#simulate 3-body problem with rk4 method
+import numpy as np
+import matplotlib.pyplot as plt
+
+G=1
+m0,m1,m2=3,1,1
+
+def body0(r0,r1,r2,t):
+    #computes the dynamics of body 0
+    r0=r0.copy()
+    r1=r1.copy()
+    r2=r2.copy()
+    global G,m1,m2
+    d01=np.sqrt((r1[0]-r0[0])**2+(r1[1]-r0[0])**2)
+    d02=np.sqrt((r2[0]-r0[0])**2+(r2[1]-r0[1])**2)
+    #velocity of body 1
+    v0x=r0[2]
+    v0y=r0[3]
+    #force acted on body 1: G*m1*r/d
+    a0x=(G*m1*(r1[0]-r0[0])/(d01)**3+G*m2*(r2[0]-r0[0])/(d02)**3)
+    a0y=(G*m1*(r1[1]-r0[1])/(d01)**3+G*m2*(r2[1]-r0[1])/(d02)**3)
+    return np.array([v0x,v0y,a0x,a0y])
+
+def body1(r0,r1,r2,t):
+    #computes the dynamics of body 2
+    r0=r0.copy()
+    r1=r1.copy()
+    r2=r2.copy()
+    global G,m0,m2
+    d01=np.sqrt((r1[0]-r0[0])**2+(r1[1]-r0[0])**2)
+    d12=np.sqrt((r2[0]-r1[0])**2+(r2[1]-r1[1])**2)
+    v1x=r1[2]
+    v1y=r1[3]
+    a1x=(G*m0*(r0[0]-r1[0])/(d01)**3+G*m2*(r2[0]-r1[0])/(d12)**3)
+    a1y=(G*m0*(r0[1]-r1[1])/(d01)**3+G*m2*(r2[1]-r1[1])/(d12)**3)
+    return np.array([v1x,v1y,a1x,a1y])
+
+def body2(r0,r1,r2,t):
+    #computes the dynamics of body 3
+    r0=r0.copy()
+    r1=r1.copy()
+    r2=r2.copy()
+    global G,m0,m1
+    d02=np.sqrt((r2[0]-r0[0])**2+(r2[1]-r0[1])**2)
+    d12=np.sqrt((r2[0]-r1[0])**2+(r2[1]-r1[1])**2)
+    v2x=r2[2]
+    v2y=r2[3]
+    a2x=(G*m0*(r0[0]-r2[0])/(d02)**3+G*m1*(r1[0]-r2[0])/(d12)**3)
+    a2y=(G*m0*(r0[1]-r2[1])/(d02)**3+G*m1*(r1[1]-r2[1])/(d12)**3)
+    return np.array([v2x,v2y,a2x,a2y])
+
+m0,m1,m2=50,1,1
+r0=np.array([0.03331,0,0,0.24019]) #[x,y,z,vx,vy,vz]
+r1=np.array([-0.83272,0.5,-3.60555,-6.00481])
+r2=np.array([-0.83272,-0.5,3.60555,-6.00481])
+
+r0xpts,r0ypts=[r0[0]],[r0[1]]
+r1xpts,r1ypts=[r1[0]],[r1[1]]
+r2xpts,r2ypts=[r2[0]],[r2[1]]
+a,b,h=0,20,0.01
+N=int((b-a)/h)
+tpts=np.linspace(a,b,N)
+for t in tpts[:-1]:
+    k1b0=h*body0(r0,r1,r2,t)
+    k1b1=h*body1(r0,r1,r2,t)
+    k1b2=h*body2(r0,r1,r2,t)
+    
+    k2b0=h*body0(r0+0.5*k1b0,r1+0.5*k1b1,r2+0.5*k1b2,t+0.5*h)
+    k2b1=h*body1(r0+0.5*k1b0,r1+0.5*k1b1,r2+0.5*k1b2,t+0.5*h)
+    k2b2=h*body2(r0+0.5*k1b0,r1+0.5*k1b1,r2+0.5*k1b2,t+0.5*h)
+    
+    k3b0=h*body0(r0+0.5*k2b0,r1+0.5*k2b1,r2+0.5*k2b2,t+0.5*h)
+    k3b1=h*body1(r0+0.5*k2b0,r1+0.5*k2b1,r2+0.5*k2b2,t+0.5*h)
+    k3b2=h*body2(r0+0.5*k2b0,r1+0.5*k2b1,r2+0.5*k2b2,t+0.5*h)
+    
+    k4b0=h*body0(r0+k3b0,r1+0.5*k3b1,r2+0.5*k3b2,t+h)
+    k4b1=h*body1(r0+k3b0,r1+0.5*k3b1,r2+0.5*k3b2,t+h)
+    k4b2=h*body2(r0+k3b0,r1+0.5*k3b1,r2+0.5*k3b2,t+h)
+    
+    r0+=(k1b0+2*k2b0+2*k3b0+k4b0)/6
+    r1+=(k1b1+2*k2b1+2*k3b1+k4b1)/6
+    r2+=(k1b2+2*k2b2+2*k3b2+k4b2)/6
+    r0xpts.append(r0[0])
+    r0ypts.append(r0[1])
+    r1xpts.append(r1[0])
+    r1ypts.append(r1[1])
+    r2xpts.append(r2[0])
+    r2ypts.append(r2[1])
+
+	fig=plt.figure()
+ax=fig.add_subplot(111)
+ax.plot(r0xpts,r0ypts,label='Body 1')       
+ax.plot(r1xpts,r1ypts,label='Body 2')
+ax.plot(r2xpts,r2ypts,label='Body 3')
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.set_title('Three-Body Orbits-RK4 solution')
+fig.legend()
+plt.show()
